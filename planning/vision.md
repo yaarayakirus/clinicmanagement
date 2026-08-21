@@ -5,21 +5,25 @@ It would manage PII and health information so has to be very secure.
 
 The set of initial requirements in mind are:
 Client management
-- Record notes 
---- Language 
---- Phone number 
---- Email 
---- Discounts
 
-Scheduling 
-- Calendar 
+- Record notes
+  --- Language
+  --- Phone number
+  --- Email
+  --- Discounts
+
+Scheduling
+
+- Calendar
 - Schedule an appointment
 
-Treatment 
-- Summary 
+Treatment
+
+- Summary
 - Reminders
 - Support multiple types of treatments
 - Attach a google forms questionnaire
 
-Observability 
+Observability
+
 - Usage
