@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createTenantAction } from "@/app/actions";
+import { TimezoneSelect } from "@/components/timezone-select";
 import { requireAuthenticatedUser } from "@/server/user-session";
 
 export default async function NewTenantPage() {
@@ -23,6 +24,8 @@ export default async function NewTenantPage() {
             Clinic name
             <input name="name" required autoComplete="organization" />
           </label>
+
+          <TimezoneSelect useSystemDefault />
 
           <button className="button button--primary" type="submit">
             Create clinic

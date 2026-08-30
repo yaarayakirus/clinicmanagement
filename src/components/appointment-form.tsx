@@ -6,6 +6,7 @@ import type {
   Tenant,
 } from "@/server/models";
 import { toDateTimeLocalValue } from "@/server/date-time";
+import { TimezoneSelect } from "@/components/timezone-select";
 
 const STATUS_OPTIONS: AppointmentStatus[] = [
   "scheduled",
@@ -136,10 +137,7 @@ export function AppointmentForm({
           </select>
         </label>
 
-        <label>
-          Timezone
-          <input name="timezone" required defaultValue={timezone} />
-        </label>
+        <TimezoneSelect defaultValue={timezone} />
       </div>
 
       <label>

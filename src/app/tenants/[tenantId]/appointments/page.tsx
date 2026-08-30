@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateTenantTimezoneAction } from "@/app/actions";
+import { TimezoneSelect } from "@/components/timezone-select";
 import {
   AuthorizationError,
   getTenantForUser,
@@ -78,10 +79,7 @@ export default async function AppointmentsPage({
 
         <div className="toolbar-panel">
           <form className="inline-form" action={timezoneAction}>
-            <label>
-              Clinic timezone
-              <input name="timezone" defaultValue={timezone} />
-            </label>
+            <TimezoneSelect label="Clinic timezone" defaultValue={timezone} />
             <button className="button" type="submit">
               Save
             </button>

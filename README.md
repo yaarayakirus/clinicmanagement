@@ -118,7 +118,8 @@ By default the seed script creates a demo owner with Google subject
 
 1. Open a clinic.
 2. Use `Calendar` to view scheduled appointments.
-3. Set the clinic timezone from the calendar page.
+3. Set the clinic timezone from the calendar page dropdown. New clinics default
+   to the browser/system timezone when JavaScript is available.
 4. Create an appointment linked to an existing client.
 5. Assign the appointment to an owner or staff practitioner.
 6. Edit appointment time, duration, status, notes, practitioner, or linked

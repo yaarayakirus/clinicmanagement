@@ -203,6 +203,7 @@ export async function listTenantsForUser(
 export async function createTenantForOwner(
   userId: string,
   name: unknown,
+  timezone?: unknown,
 ): Promise<string> {
   const db = await getDb();
   const now = new Date();
@@ -210,7 +211,7 @@ export async function createTenantForOwner(
 
   const tenantResult = await tenants(db).insertOne({
     name: tenantName,
-    timezone: normalizeTimezone(undefined),
+    timezone: normalizeTimezone(cleanText(timezone)),
     createdAt: now,
     updatedAt: now,
   });

@@ -1,4 +1,4 @@
-const DEFAULT_TIMEZONE = "America/New_York";
+import { FALLBACK_TIMEZONE } from "@/lib/timezones";
 
 function getDateParts(date: Date, timeZone: string) {
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -34,7 +34,7 @@ export function normalizeTimezone(timezone: string | undefined | null): string {
     new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
     return value;
   } catch {
-    return DEFAULT_TIMEZONE;
+    return FALLBACK_TIMEZONE;
   }
 }
 

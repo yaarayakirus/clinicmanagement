@@ -25,6 +25,7 @@ export async function createTenantAction(formData: FormData) {
   const tenantId = await createTenantForOwner(
     user.id,
     getString(formData, "name"),
+    getString(formData, "timezone"),
   );
 
   revalidatePath("/");
