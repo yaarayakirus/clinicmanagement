@@ -126,8 +126,8 @@ Scope:
 - Cancel appointment.
 - Link appointment to client.
 - Appointment status: scheduled, completed, cancelled, no-show.
-- Basic staff assignment.
 - Timezone-aware appointment storage and display.
+- Set clinic owner timezone.
 
 Data model additions:
 

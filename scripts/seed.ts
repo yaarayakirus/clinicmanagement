@@ -1,6 +1,7 @@
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import { existsSync, readFileSync } from "node:fs";
 import type {
+  Appointment,
   Client,
   Tenant,
   TenantMembership,
@@ -65,6 +66,9 @@ try {
   await db.collection<Client>("clients").deleteMany({
     tenantId: { $in: oldSeedTenantIds },
   });
+  await db.collection<Appointment>("appointments").deleteMany({
+    tenantId: { $in: oldSeedTenantIds },
+  });
   await db.collection<TenantMembership>("tenantMemberships").deleteMany({
     tenantId: { $in: oldSeedTenantIds },
   });
@@ -93,17 +97,20 @@ try {
 
   const downtown = await db.collection<Tenant>("tenants").insertOne({
     name: "Downtown Body Clinic",
+    timezone: "America/New_York",
     createdAt: now,
     updatedAt: now,
   });
   const north = await db.collection<Tenant>("tenants").insertOne({
     name: "North Psychology Group",
+    timezone: "America/Chicago",
     createdAt: now,
     updatedAt: now,
   });
 
   const memberships: TenantMembership[] = [
     {
+      _id: new ObjectId(),
       tenantId: downtown.insertedId.toHexString(),
       userId: owner._id.toHexString(),
       role: "owner",
@@ -111,6 +118,7 @@ try {
       updatedAt: now,
     },
     {
+      _id: new ObjectId(),
       tenantId: north.insertedId.toHexString(),
       userId: owner._id.toHexString(),
       role: "owner",
@@ -123,7 +131,7 @@ try {
     .collection<TenantMembership>("tenantMemberships")
     .insertMany(memberships);
 
-  await db.collection<Client>("clients").insertMany([
+  const seededClients = await db.collection<Client>("clients").insertMany([
     {
       tenantId: downtown.insertedId.toHexString(),
       name: "Maria Rodriguez",
@@ -154,6 +162,58 @@ try {
       email: "samira.patel@example.test",
       discountNotes: "Student rate",
       generalNotes: "Needs remote appointment reminders.",
+      createdAt: now,
+      updatedAt: now,
+    },
+  ]);
+
+  const mariaClientId = seededClients.insertedIds[0].toHexString();
+  const jordanClientId = seededClients.insertedIds[1].toHexString();
+  const samiraClientId = seededClients.insertedIds[2].toHexString();
+
+  await db.collection<Appointment>("appointments").insertMany([
+    {
+      tenantId: downtown.insertedId.toHexString(),
+      clientId: mariaClientId,
+      practitionerMembershipId: memberships[0]._id?.toHexString(),
+      title: "Body treatment consultation",
+      status: "scheduled",
+      startsAt: new Date("2026-09-01T14:00:00.000Z"),
+      endsAt: new Date("2026-09-01T15:00:00.000Z"),
+      timezone: "America/New_York",
+      notes: "Initial intake and treatment plan.",
+      googleCalendarEventId: null,
+      googleCalendarSyncStatus: "not_configured",
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      tenantId: downtown.insertedId.toHexString(),
+      clientId: jordanClientId,
+      practitionerMembershipId: memberships[0]._id?.toHexString(),
+      title: "Follow-up treatment",
+      status: "completed",
+      startsAt: new Date("2026-08-28T17:30:00.000Z"),
+      endsAt: new Date("2026-08-28T18:15:00.000Z"),
+      timezone: "America/New_York",
+      notes: "Reviewed recurring plan.",
+      googleCalendarEventId: null,
+      googleCalendarSyncStatus: "not_configured",
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      tenantId: north.insertedId.toHexString(),
+      clientId: samiraClientId,
+      practitionerMembershipId: memberships[1]._id?.toHexString(),
+      title: "Psychology intake",
+      status: "scheduled",
+      startsAt: new Date("2026-09-02T16:00:00.000Z"),
+      endsAt: new Date("2026-09-02T16:50:00.000Z"),
+      timezone: "America/Chicago",
+      notes: "Remote appointment.",
+      googleCalendarEventId: null,
+      googleCalendarSyncStatus: "not_configured",
       createdAt: now,
       updatedAt: now,
     },

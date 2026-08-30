@@ -3,9 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  cancelAppointmentForTenant,
+  createAppointmentForTenant,
   createClientForTenant,
   createClientNoteForTenant,
   createTenantForOwner,
+  updateAppointmentForTenant,
+  updateTenantTimezone,
+  type AppointmentInput,
 } from "@/server/clinic-service";
 import { requireAuthenticatedUser } from "@/server/user-session";
 
@@ -56,4 +61,80 @@ export async function createClientNoteAction(
   );
 
   revalidatePath(`/tenants/${tenantId}/clients/${clientId}`);
+}
+
+function appointmentInputFromForm(formData: FormData): AppointmentInput {
+  return {
+    clientId: getString(formData, "clientId"),
+    practitionerMembershipId: getString(formData, "practitionerMembershipId"),
+    title: getString(formData, "title"),
+    status: getString(formData, "status") as AppointmentInput["status"],
+    startsAtLocal: getString(formData, "startsAtLocal"),
+    durationMinutes: getString(formData, "durationMinutes"),
+    timezone: getString(formData, "timezone"),
+    notes: getString(formData, "notes"),
+  };
+}
+
+export async function updateTenantTimezoneAction(
+  tenantId: string,
+  formData: FormData,
+) {
+  const user = await requireAuthenticatedUser();
+
+  await updateTenantTimezone(
+    user.id,
+    tenantId,
+    getString(formData, "timezone"),
+  );
+
+  revalidatePath(`/tenants/${tenantId}/appointments`);
+  revalidatePath(`/tenants/${tenantId}/clients`);
+}
+
+export async function createAppointmentAction(
+  tenantId: string,
+  formData: FormData,
+) {
+  const user = await requireAuthenticatedUser();
+  const appointmentId = await createAppointmentForTenant(
+    user.id,
+    tenantId,
+    appointmentInputFromForm(formData),
+  );
+
+  revalidatePath(`/tenants/${tenantId}/appointments`);
+  redirect(`/tenants/${tenantId}/appointments/${appointmentId}/edit`);
+}
+
+export async function updateAppointmentAction(
+  tenantId: string,
+  appointmentId: string,
+  formData: FormData,
+) {
+  const user = await requireAuthenticatedUser();
+
+  await updateAppointmentForTenant(
+    user.id,
+    tenantId,
+    appointmentId,
+    appointmentInputFromForm(formData),
+  );
+
+  revalidatePath(`/tenants/${tenantId}/appointments`);
+  revalidatePath(`/tenants/${tenantId}/appointments/${appointmentId}/edit`);
+  redirect(`/tenants/${tenantId}/appointments`);
+}
+
+export async function cancelAppointmentAction(
+  tenantId: string,
+  appointmentId: string,
+) {
+  const user = await requireAuthenticatedUser();
+
+  await cancelAppointmentForTenant(user.id, tenantId, appointmentId);
+
+  revalidatePath(`/tenants/${tenantId}/appointments`);
+  revalidatePath(`/tenants/${tenantId}/appointments/${appointmentId}/edit`);
+  redirect(`/tenants/${tenantId}/appointments`);
 }

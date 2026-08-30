@@ -2,6 +2,9 @@ import type { ObjectId } from "mongodb";
 
 export type Role = "owner" | "staff" | "client";
 
+export type AppointmentStatus =
+  "scheduled" | "completed" | "cancelled" | "no-show";
+
 export type User = {
   _id?: ObjectId;
   googleSubjectId: string;
@@ -15,6 +18,7 @@ export type User = {
 export type Tenant = {
   _id?: ObjectId;
   name: string;
+  timezone?: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -26,6 +30,12 @@ export type TenantMembership = {
   role: Role;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type PractitionerOption = {
+  membershipId: string;
+  name: string;
+  role: Role;
 };
 
 export type Client = {
@@ -46,6 +56,23 @@ export type ClientNote = {
   tenantId: string;
   clientId: string;
   body: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Appointment = {
+  _id?: ObjectId;
+  tenantId: string;
+  clientId: string;
+  practitionerMembershipId?: string;
+  title: string;
+  status: AppointmentStatus;
+  startsAt: Date;
+  endsAt: Date;
+  timezone: string;
+  notes: string;
+  googleCalendarEventId?: string | null;
+  googleCalendarSyncStatus: "not_configured" | "pending" | "synced" | "failed";
   createdAt: Date;
   updatedAt: Date;
 };

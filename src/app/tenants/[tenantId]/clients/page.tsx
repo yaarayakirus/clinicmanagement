@@ -46,6 +46,9 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
             <Link className="button" href="/">
               Dashboard
             </Link>
+            <Link className="button" href={`/tenants/${tenantId}/appointments`}>
+              Calendar
+            </Link>
             <Link
               className="button button--primary"
               href={`/tenants/${tenantId}/clients/new`}

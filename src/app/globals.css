@@ -141,6 +141,11 @@ a {
   margin: 0;
 }
 
+.section-heading--compact {
+  align-items: center;
+  padding-bottom: 16px;
+}
+
 .list {
   display: grid;
   gap: 10px;
@@ -196,6 +201,7 @@ a {
 }
 
 .form input,
+.form select,
 .form textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -206,7 +212,8 @@ a {
   font-weight: 400;
 }
 
-.form input {
+.form input,
+.form select {
   min-height: 44px;
   padding: 0 12px;
 }
@@ -273,6 +280,121 @@ a {
   font-size: 0.85rem;
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
+}
+
+.toolbar-panel {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.inline-form {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+}
+
+.inline-form label {
+  display: grid;
+  flex: 1;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.inline-form input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.calendar-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.calendar-list--compact {
+  margin-top: 0;
+}
+
+.calendar-item {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 76px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.calendar-item time {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.calendar-item strong,
+.calendar-item small {
+  display: block;
+}
+
+.calendar-item small {
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--foreground);
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.status--scheduled {
+  border-color: #9ec5fe;
+  background: #eff6ff;
+}
+
+.status--completed {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.status--cancelled,
+.status--no-show {
+  border-color: #fca5a5;
+  background: #fff1f2;
+}
+
+.danger-zone {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.button--danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
 @media (max-width: 640px) {
   .page-shell {
     padding: 24px 16px;
@@ -290,5 +412,14 @@ a {
 
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .form-grid,
+  .calendar-item {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-form {
+    display: grid;
   }
 }

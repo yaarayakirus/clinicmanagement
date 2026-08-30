@@ -1,12 +1,20 @@
 import "server-only";
 
 import type { Collection, Db, OptionalUnlessRequiredId } from "mongodb";
+import { getAppointmentForTenant } from "@/server/appointment-access";
 import { getClientForTenant } from "@/server/client-access";
+import {
+  normalizeTimezone,
+  parseDateTimeLocalInTimeZone,
+} from "@/server/date-time";
 import { getDb } from "@/server/mongodb";
 import { parseObjectId } from "@/server/ids";
 import type {
+  Appointment,
+  AppointmentStatus,
   Client,
   ClientNote,
+  PractitionerOption,
   Role,
   Tenant,
   TenantMembership,
@@ -27,6 +35,17 @@ export type ClientInput = {
   email: string;
   discountNotes: string;
   generalNotes: string;
+};
+
+export type AppointmentInput = {
+  clientId: string;
+  practitionerMembershipId?: string;
+  title: string;
+  status: AppointmentStatus;
+  startsAtLocal: string;
+  durationMinutes: string;
+  timezone: string;
+  notes: string;
 };
 
 export type DashboardTenant = {
@@ -63,6 +82,21 @@ function requireText(value: unknown, fieldName: string): string {
   return text;
 }
 
+function requireAppointmentStatus(
+  status: AppointmentStatus,
+): AppointmentStatus {
+  if (
+    status !== "scheduled" &&
+    status !== "completed" &&
+    status !== "cancelled" &&
+    status !== "no-show"
+  ) {
+    throw new Error("Appointment status is invalid");
+  }
+
+  return status;
+}
+
 function users(db: Db): Collection<User> {
   return db.collection<User>("users");
 }
@@ -81,6 +115,10 @@ function clients(db: Db): Collection<Client> {
 
 function clientNotes(db: Db): Collection<ClientNote> {
   return db.collection<ClientNote>("clientNotes");
+}
+
+function appointments(db: Db): Collection<Appointment> {
+  return db.collection<Appointment>("appointments");
 }
 
 export async function upsertUserFromSession(input: SessionUserInput): Promise<{
@@ -172,6 +210,7 @@ export async function createTenantForOwner(
 
   const tenantResult = await tenants(db).insertOne({
     name: tenantName,
+    timezone: normalizeTimezone(undefined),
     createdAt: now,
     updatedAt: now,
   });
@@ -204,6 +243,41 @@ export async function requireTenantMembership(
   return membership;
 }
 
+export async function listPractitionersForTenant(
+  userId: string,
+  tenantId: string,
+): Promise<PractitionerOption[]> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  const staffMemberships = await memberships(db)
+    .find({ tenantId, role: { $in: ["owner", "staff"] } })
+    .sort({ role: 1, createdAt: 1 })
+    .toArray();
+
+  const options = await Promise.all(
+    staffMemberships.map(async (membership) => {
+      const userObjectId = parseObjectId(membership.userId);
+
+      if (!membership._id || !userObjectId) {
+        return null;
+      }
+
+      const user = await users(db).findOne({ _id: userObjectId });
+
+      return {
+        membershipId: membership._id.toHexString(),
+        name: user?.name ?? user?.email ?? membership.role,
+        role: membership.role,
+      };
+    }),
+  );
+
+  return options.filter(
+    (option): option is PractitionerOption => option !== null,
+  );
+}
+
 export async function getTenantForUser(
   userId: string,
   tenantId: string,
@@ -224,6 +298,31 @@ export async function getTenantForUser(
   }
 
   return tenant;
+}
+
+export async function updateTenantTimezone(
+  userId: string,
+  tenantId: string,
+  timezone: unknown,
+): Promise<void> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner"]);
+
+  const tenantObjectId = parseObjectId(tenantId);
+
+  if (!tenantObjectId) {
+    throw new NotFoundError("Clinic not found");
+  }
+
+  await tenants(db).updateOne(
+    { _id: tenantObjectId },
+    {
+      $set: {
+        timezone: normalizeTimezone(cleanText(timezone)),
+        updatedAt: new Date(),
+      },
+    },
+  );
 }
 
 export async function listClientsForTenant(
@@ -264,7 +363,11 @@ export async function getClientDetailForUser(
   userId: string,
   tenantId: string,
   clientId: string,
-): Promise<{ client: Client; notes: ClientNote[] }> {
+): Promise<{
+  client: Client;
+  notes: ClientNote[];
+  appointments: Appointment[];
+}> {
   const db = await getDb();
   await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
 
@@ -279,7 +382,12 @@ export async function getClientDetailForUser(
     .sort({ createdAt: -1 })
     .toArray();
 
-  return { client, notes };
+  const clientAppointments = await appointments(db)
+    .find({ tenantId, clientId })
+    .sort({ startsAt: -1 })
+    .toArray();
+
+  return { client, notes, appointments: clientAppointments };
 }
 
 export async function createClientNoteForTenant(
@@ -306,4 +414,202 @@ export async function createClientNoteForTenant(
     createdAt: now,
     updatedAt: now,
   } as OptionalUnlessRequiredId<ClientNote>);
+}
+
+function parseAppointmentInput(
+  input: AppointmentInput,
+  fallbackTimezone: string | undefined,
+): Omit<Appointment, "_id" | "tenantId" | "createdAt" | "updatedAt"> {
+  const timezone = normalizeTimezone(input.timezone || fallbackTimezone);
+  const startsAt = parseDateTimeLocalInTimeZone(input.startsAtLocal, timezone);
+  const durationMinutes = Number(input.durationMinutes);
+
+  if (!Number.isFinite(durationMinutes) || durationMinutes < 15) {
+    throw new Error("Duration must be at least 15 minutes");
+  }
+
+  const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
+
+  return {
+    clientId: requireText(input.clientId, "Client"),
+    practitionerMembershipId: cleanText(input.practitionerMembershipId),
+    title: requireText(input.title, "Appointment title"),
+    status: requireAppointmentStatus(input.status),
+    startsAt,
+    endsAt,
+    timezone,
+    notes: cleanText(input.notes),
+    googleCalendarEventId: null,
+    googleCalendarSyncStatus: "not_configured",
+  };
+}
+
+async function requireAssignablePractitioner(
+  db: Db,
+  tenantId: string,
+  practitionerMembershipId: string,
+): Promise<void> {
+  const cleanedId = cleanText(practitionerMembershipId);
+
+  if (!cleanedId) {
+    return;
+  }
+
+  const membershipObjectId = parseObjectId(cleanedId);
+
+  if (!membershipObjectId) {
+    throw new NotFoundError("Practitioner not found");
+  }
+
+  const membership = await memberships(db).findOne({
+    _id: membershipObjectId,
+    tenantId,
+    role: { $in: ["owner", "staff"] },
+  });
+
+  if (!membership) {
+    throw new NotFoundError("Practitioner not found");
+  }
+}
+
+export async function listAppointmentsForTenant(
+  userId: string,
+  tenantId: string,
+): Promise<Appointment[]> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  return appointments(db).find({ tenantId }).sort({ startsAt: 1 }).toArray();
+}
+
+export async function getAppointmentDetailForUser(
+  userId: string,
+  tenantId: string,
+  appointmentId: string,
+): Promise<Appointment> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  const appointment = await getAppointmentForTenant(
+    db,
+    tenantId,
+    appointmentId,
+  );
+
+  if (!appointment) {
+    throw new NotFoundError("Appointment not found");
+  }
+
+  return appointment;
+}
+
+export async function createAppointmentForTenant(
+  userId: string,
+  tenantId: string,
+  input: AppointmentInput,
+): Promise<string> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  const tenant = await getTenantForUser(userId, tenantId);
+  const client = await getClientForTenant(db, tenantId, input.clientId);
+
+  if (!client) {
+    throw new NotFoundError("Client not found");
+  }
+
+  await requireAssignablePractitioner(
+    db,
+    tenantId,
+    input.practitionerMembershipId ?? "",
+  );
+
+  const now = new Date();
+  const parsed = parseAppointmentInput(input, tenant.timezone ?? undefined);
+  const result = await appointments(db).insertOne({
+    ...parsed,
+    tenantId,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  return result.insertedId.toHexString();
+}
+
+export async function updateAppointmentForTenant(
+  userId: string,
+  tenantId: string,
+  appointmentId: string,
+  input: AppointmentInput,
+): Promise<void> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  const tenant = await getTenantForUser(userId, tenantId);
+  const existingAppointment = await getAppointmentForTenant(
+    db,
+    tenantId,
+    appointmentId,
+  );
+
+  if (!existingAppointment) {
+    throw new NotFoundError("Appointment not found");
+  }
+
+  const client = await getClientForTenant(db, tenantId, input.clientId);
+
+  if (!client) {
+    throw new NotFoundError("Client not found");
+  }
+
+  await requireAssignablePractitioner(
+    db,
+    tenantId,
+    input.practitionerMembershipId ?? "",
+  );
+
+  const appointmentObjectId = parseObjectId(appointmentId);
+
+  if (!appointmentObjectId) {
+    throw new NotFoundError("Appointment not found");
+  }
+
+  await appointments(db).updateOne(
+    { tenantId, _id: appointmentObjectId },
+    {
+      $set: {
+        ...parseAppointmentInput(input, tenant.timezone ?? undefined),
+        updatedAt: new Date(),
+      },
+    },
+  );
+}
+
+export async function cancelAppointmentForTenant(
+  userId: string,
+  tenantId: string,
+  appointmentId: string,
+): Promise<void> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner", "staff"]);
+
+  const appointmentObjectId = parseObjectId(appointmentId);
+
+  if (!appointmentObjectId) {
+    throw new NotFoundError("Appointment not found");
+  }
+
+  const result = await appointments(db).updateOne(
+    { tenantId, _id: appointmentObjectId },
+    {
+      $set: {
+        status: "cancelled",
+        updatedAt: new Date(),
+      },
+    },
+  );
+
+  if (result.matchedCount === 0) {
+    throw new NotFoundError("Appointment not found");
+  }
 }

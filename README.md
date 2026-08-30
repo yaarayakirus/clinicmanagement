@@ -113,3 +113,28 @@ By default the seed script creates a demo owner with Google subject
 - Client reads are scoped by both `tenantId` and client `_id`, so changing a
   client ID in a URL cannot cross tenant boundaries.
 - MongoDB Atlas is deferred until deployment planning.
+
+## Phase 2 Workflow
+
+1. Open a clinic.
+2. Use `Calendar` to view scheduled appointments.
+3. Set the clinic timezone from the calendar page.
+4. Create an appointment linked to an existing client.
+5. Assign the appointment to an owner or staff practitioner.
+6. Edit appointment time, duration, status, notes, practitioner, or linked
+   client.
+7. Cancel an appointment from the edit page.
+8. Open a client detail page to see appointment history for that client.
+
+Additional local routes:
+
+- `/tenants/[tenantId]/appointments` calendar list
+- `/tenants/[tenantId]/appointments/new` create an appointment
+- `/tenants/[tenantId]/appointments/[appointmentId]/edit` edit or cancel an
+  appointment
+
+Appointments store UTC start/end timestamps plus the clinic timezone used for
+display. Records include `googleCalendarEventId` and
+`googleCalendarSyncStatus` fields so Google Calendar sync can be connected when
+the app persists Google refresh tokens. Live Google Calendar event creation is
+not enabled yet.

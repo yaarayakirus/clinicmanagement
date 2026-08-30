@@ -7,7 +7,8 @@ import {
   getTenantForUser,
   NotFoundError,
 } from "@/server/clinic-service";
-import type { Client, ClientNote, Tenant } from "@/server/models";
+import { formatDateTimeInTimeZone } from "@/server/date-time";
+import type { Appointment, Client, ClientNote, Tenant } from "@/server/models";
 import { requireAuthenticatedUser } from "@/server/user-session";
 
 type ClientDetailPageProps = {
@@ -26,6 +27,7 @@ export default async function ClientDetailPage({
   let tenant: Tenant;
   let client: Client;
   let notes: ClientNote[];
+  let appointments: Appointment[];
 
   try {
     const detailResults = await Promise.all([
@@ -36,6 +38,7 @@ export default async function ClientDetailPage({
     const detail = detailResults[1];
     client = detail.client;
     notes = detail.notes;
+    appointments = detail.appointments;
   } catch (error) {
     if (error instanceof AuthorizationError || error instanceof NotFoundError) {
       notFound();
@@ -112,6 +115,48 @@ export default async function ClientDetailPage({
             )}
           </section>
         </div>
+
+        <section className="status-panel" aria-labelledby="history-title">
+          <div className="section-heading section-heading--compact">
+            <h2 id="history-title">Appointment history</h2>
+            <Link
+              className="button button--primary"
+              href={`/tenants/${tenantId}/appointments/new`}
+            >
+              New appointment
+            </Link>
+          </div>
+
+          {appointments.length > 0 ? (
+            <div className="calendar-list calendar-list--compact">
+              {appointments.map((appointment) => (
+                <Link
+                  className="calendar-item"
+                  href={`/tenants/${tenantId}/appointments/${appointment._id?.toHexString()}/edit`}
+                  key={appointment._id?.toHexString()}
+                >
+                  <time dateTime={appointment.startsAt.toISOString()}>
+                    {formatDateTimeInTimeZone(
+                      appointment.startsAt,
+                      appointment.timezone,
+                    )}
+                  </time>
+                  <div>
+                    <strong>{appointment.title}</strong>
+                    <small>{appointment.notes || "No notes"}</small>
+                  </div>
+                  <span className={`status status--${appointment.status}`}>
+                    {appointment.status === "no-show"
+                      ? "No-show"
+                      : appointment.status}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p>No appointment history yet.</p>
+          )}
+        </section>
       </section>
     </main>
   );
