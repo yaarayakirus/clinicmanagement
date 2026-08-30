@@ -578,6 +578,55 @@ export async function updateTenantTimezone(
   );
 }
 
+function normalizeGoogleCalendarEmbedUrl(value: unknown): string | null {
+  const text = cleanText(value);
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    const url = new URL(text);
+
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "calendar.google.com" ||
+      !url.pathname.includes("/calendar/embed")
+    ) {
+      throw new Error("Google Calendar embed URL is invalid");
+    }
+
+    return url.toString();
+  } catch {
+    throw new Error("Google Calendar embed URL is invalid");
+  }
+}
+
+export async function updateTenantGoogleCalendarEmbedUrl(
+  userId: string,
+  tenantId: string,
+  embedUrl: unknown,
+): Promise<void> {
+  const db = await getDb();
+  await requireTenantMembership(db, userId, tenantId, ["owner"]);
+
+  const tenantObjectId = parseObjectId(tenantId);
+
+  if (!tenantObjectId) {
+    throw new NotFoundError("Clinic not found");
+  }
+
+  await tenants(db).updateOne(
+    { _id: tenantObjectId },
+    {
+      $set: {
+        googleCalendarEmbedUrl: normalizeGoogleCalendarEmbedUrl(embedUrl),
+        updatedAt: new Date(),
+      },
+    },
+  );
+}
+
 export async function listClientsForTenant(
   userId: string,
   tenantId: string,

@@ -9,6 +9,7 @@ import {
   createClientNoteForTenant,
   createTenantForOwner,
   updateAppointmentForTenant,
+  updateTenantGoogleCalendarEmbedUrl,
   updateTenantTimezone,
   type AppointmentInput,
 } from "@/server/clinic-service";
@@ -91,6 +92,21 @@ export async function updateTenantTimezoneAction(
 
   revalidatePath(`/tenants/${tenantId}/appointments`);
   revalidatePath(`/tenants/${tenantId}/clients`);
+}
+
+export async function updateTenantGoogleCalendarEmbedUrlAction(
+  tenantId: string,
+  formData: FormData,
+) {
+  const user = await requireAuthenticatedUser();
+
+  await updateTenantGoogleCalendarEmbedUrl(
+    user.id,
+    tenantId,
+    getString(formData, "googleCalendarEmbedUrl"),
+  );
+
+  revalidatePath(`/tenants/${tenantId}/appointments`);
 }
 
 export async function createAppointmentAction(

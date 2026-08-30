@@ -126,7 +126,7 @@ By default the seed script creates a demo owner with Google subject
 ## Phase 2 Workflow
 
 1. Open a clinic.
-2. Use `Calendar` to view scheduled appointments.
+2. Use `Calendar` to switch between embedded calendar and list views.
 3. Set the clinic timezone from the calendar page dropdown. New clinics default
    to the browser/system timezone when JavaScript is available.
 4. Create an appointment linked to an existing client.
@@ -152,3 +152,11 @@ The app stores the Google access token, refresh token, and token expiry on the
 local user record. Google only returns a refresh token during an offline consent
 grant, so sign out and sign in again after this integration if existing users
 show `Calendar not connected`.
+
+The embedded Google Calendar view defaults to the signed-in user's primary
+calendar by deriving the embed URL from their Google email address. To use a
+shared clinic calendar instead, open Google Calendar settings for that calendar,
+copy the embed URL from `Integrate calendar`, and save it as the override on the
+app's Calendar page. The list view can filter appointments by date range, title,
+client name, and status. Use `View on calendar` from a list row to switch to the
+embedded calendar focused on that appointment's day.

@@ -294,26 +294,96 @@ a {
   background: var(--surface);
 }
 
+.view-tabs {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 24px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.view-tab--active {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
 .inline-form {
   display: flex;
   align-items: end;
   gap: 12px;
 }
 
-.inline-form label {
+.inline-form label,
+.filter-panel label {
   display: grid;
-  flex: 1;
   gap: 8px;
   font-weight: 700;
 }
 
-.inline-form input {
+.inline-form label {
+  flex: 1;
+}
+
+.inline-form input,
+.inline-form select,
+.filter-panel input,
+.filter-panel select {
   min-height: 42px;
   padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
   font: inherit;
   font-weight: 400;
+}
+
+.filter-panel {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.calendar-embed-panel {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.google-calendar-frame {
+  width: 100%;
+  height: min(72vh, 760px);
+  min-height: 540px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.embed-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  margin-top: 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
 }
 
 .calendar-list {
@@ -328,7 +398,7 @@ a {
 
 .calendar-item {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr) auto;
+  grid-template-columns: 190px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 16px;
   min-height: 76px;
@@ -338,6 +408,10 @@ a {
   background: var(--surface);
   color: var(--foreground);
   text-decoration: none;
+}
+
+a.calendar-item {
+  grid-template-columns: 190px minmax(0, 1fr) auto;
 }
 
 .calendar-item time {
@@ -371,6 +445,12 @@ a {
 .status-stack {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.row-actions {
+  display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
@@ -442,6 +522,8 @@ a {
   }
 
   .form-grid,
+  .filter-panel,
+  .embed-form,
   .calendar-item {
     grid-template-columns: 1fr;
   }
@@ -452,5 +534,13 @@ a {
 
   .inline-form {
     display: grid;
+  }
+
+  .row-actions {
+    justify-content: flex-start;
+  }
+
+  .google-calendar-frame {
+    min-height: 460px;
   }
 }

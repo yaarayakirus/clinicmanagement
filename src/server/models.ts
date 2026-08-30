@@ -22,6 +22,7 @@ export type Tenant = {
   _id?: ObjectId;
   name: string;
   timezone?: string;
+  googleCalendarEmbedUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
