@@ -70,8 +70,35 @@ bun run dev
 bun run build
 bun run lint
 bun run format
+bun run seed
 bun run test
 ```
+
+## Phase 1 Workflow
+
+1. Sign in with Google.
+2. Create a clinic from the dashboard.
+3. Open the clinic client list.
+4. Add a client with contact, language, discount, and note fields.
+5. Open the client detail page and add session notes.
+
+Local routes:
+
+- `/` dashboard and sign-in state
+- `/tenants/new` create a clinic
+- `/tenants/[tenantId]/clients` client list
+- `/tenants/[tenantId]/clients/new` create a client
+- `/tenants/[tenantId]/clients/[clientId]` client detail and notes
+
+To load sample data after MongoDB is running:
+
+```sh
+bun run seed
+```
+
+By default the seed script creates a demo owner with Google subject
+`local-seed-owner`. To seed data for your real Google login, set
+`SEED_GOOGLE_SUBJECT_ID` to your Google subject ID before running the script.
 
 ## Security Baseline
 
@@ -81,4 +108,8 @@ bun run test
 - Tenant isolation is enforced in application code.
 - Tenant-owned queries should use `tenantScopedQuery` so trusted tenant context
   overrides caller-supplied tenant IDs.
+- Client list, client creation, client detail, and client note writes require
+  an authenticated tenant membership.
+- Client reads are scoped by both `tenantId` and client `_id`, so changing a
+  client ID in a URL cannot cross tenant boundaries.
 - MongoDB Atlas is deferred until deployment planning.

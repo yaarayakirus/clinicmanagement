@@ -26,7 +26,7 @@ Initial implementation should use:
 
 Mobile should start as a responsive web experience.
 
-## Phase 0: Foundation and Decisions
+## Phase 0: Foundation and Decisions (done)
 
 Goal: make the project runnable locally and establish the security baseline before building clinic features.
 
@@ -64,7 +64,7 @@ bun run dev
 bun run test
 ```
 
-## Phase 1: Local Vertical Slice
+## Phase 1: Local Vertical Slice (done)
 
 Goal: create the smallest end-to-end workflow that proves auth, tenant isolation, data persistence, and local testing.
 
@@ -114,7 +114,9 @@ Acceptance criteria:
 
 ## Phase 2: Scheduling MVP
 
-Goal: add practical appointment scheduling for clinic staff.
+Goal: add practical appointment scheduling for clinic staff that uses Google Calendar infrastructure.
+
+Notes: provision or reuse the logged in user calendar for the appointments.
 
 Scope:
 
