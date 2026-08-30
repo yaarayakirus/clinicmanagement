@@ -112,7 +112,7 @@ Acceptance criteria:
 - Tests cover cross-tenant access denial.
 - No client data is available to unauthenticated users.
 
-## Phase 2: Scheduling MVP
+## Phase 2: Scheduling MVP (done)
 
 Goal: add practical appointment scheduling for clinic staff that uses Google Calendar infrastructure.
 
