@@ -158,7 +158,7 @@ Scope:
 - Record treatment summary.
 - Add reminder date/time.
 - Attach questionnaire URL, initially as a Google Forms link.
-- Show treatment timeline on client detail page.
+- Show treatment timeline on client detail page, including income timeline
 
 Data model additions:
 
