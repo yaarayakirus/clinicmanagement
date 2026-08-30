@@ -11,6 +11,9 @@ export type User = {
   email: string;
   name?: string | null;
   image?: string | null;
+  googleAccessToken?: string | null;
+  googleRefreshToken?: string | null;
+  googleAccessTokenExpiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };

@@ -33,6 +33,9 @@ clinics.
 
 4. Fill in Google OAuth credentials in `.env.local`.
 
+   In Google Cloud Console, enable the Google Calendar API for the same project
+   that owns the OAuth client.
+
    The Google OAuth redirect URI for local development is:
 
    ```text
@@ -43,6 +46,12 @@ clinics.
 
    ```sh
    openssl rand -base64 32
+   ```
+
+   The app requests these Google OAuth scopes:
+
+   ```text
+   openid email profile https://www.googleapis.com/auth/calendar.events
    ```
 
 5. Start MongoDB:
@@ -135,7 +144,11 @@ Additional local routes:
   appointment
 
 Appointments store UTC start/end timestamps plus the clinic timezone used for
-display. Records include `googleCalendarEventId` and
-`googleCalendarSyncStatus` fields so Google Calendar sync can be connected when
-the app persists Google refresh tokens. Live Google Calendar event creation is
-not enabled yet.
+display. When the signed-in Google account has granted Calendar access, creating
+or editing an appointment syncs it to the user's primary Google Calendar.
+Cancelling an appointment removes the Google Calendar event when one exists.
+
+The app stores the Google access token, refresh token, and token expiry on the
+local user record. Google only returns a refresh token during an offline consent
+grant, so sign out and sign in again after this integration if existing users
+show `Calendar not connected`.

@@ -23,6 +23,14 @@ function statusLabel(status: Appointment["status"]) {
   return status === "no-show" ? "No-show" : status;
 }
 
+function syncStatusLabel(status: Appointment["googleCalendarSyncStatus"]) {
+  if (status === "not_configured") {
+    return "Calendar not connected";
+  }
+
+  return `Calendar ${status}`;
+}
+
 function clientNameFor(clients: Client[], clientId: string) {
   return (
     clients.find((client) => client._id?.toHexString() === clientId)?.name ??
@@ -104,9 +112,16 @@ export default async function AppointmentsPage({
                   <strong>{appointment.title}</strong>
                   <small>{clientNameFor(clients, appointment.clientId)}</small>
                 </div>
-                <span className={`status status--${appointment.status}`}>
-                  {statusLabel(appointment.status)}
-                </span>
+                <div className="status-stack">
+                  <span className={`status status--${appointment.status}`}>
+                    {statusLabel(appointment.status)}
+                  </span>
+                  <span
+                    className={`status status--sync-${appointment.googleCalendarSyncStatus}`}
+                  >
+                    {syncStatusLabel(appointment.googleCalendarSyncStatus)}
+                  </span>
+                </div>
               </Link>
             ))}
           </div>

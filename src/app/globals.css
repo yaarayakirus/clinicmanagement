@@ -368,6 +368,13 @@ a {
   text-transform: capitalize;
 }
 
+.status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .status--scheduled {
   border-color: #9ec5fe;
   background: #eff6ff;
@@ -382,6 +389,26 @@ a {
 .status--no-show {
   border-color: #fca5a5;
   background: #fff1f2;
+}
+
+.status--sync-synced {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.status--sync-pending {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.status--sync-failed {
+  border-color: #fca5a5;
+  background: #fff1f2;
+}
+
+.status--sync-not_configured {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .danger-zone {
@@ -417,6 +444,10 @@ a {
   .form-grid,
   .calendar-item {
     grid-template-columns: 1fr;
+  }
+
+  .status-stack {
+    justify-content: flex-start;
   }
 
   .inline-form {

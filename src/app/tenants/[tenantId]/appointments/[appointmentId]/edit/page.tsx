@@ -63,6 +63,10 @@ export default async function EditAppointmentPage({
     tenantId,
     appointmentId,
   );
+  const syncStatus =
+    appointment.googleCalendarSyncStatus === "not_configured"
+      ? "Calendar not connected"
+      : `Calendar ${appointment.googleCalendarSyncStatus}`;
 
   return (
     <main className="page-shell">
@@ -75,6 +79,14 @@ export default async function EditAppointmentPage({
           <Link className="button" href={`/tenants/${tenantId}/appointments`}>
             Calendar
           </Link>
+        </div>
+
+        <div className="toolbar-panel">
+          <span
+            className={`status status--sync-${appointment.googleCalendarSyncStatus}`}
+          >
+            {syncStatus}
+          </span>
         </div>
 
         <AppointmentForm

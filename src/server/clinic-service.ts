@@ -7,6 +7,13 @@ import {
   normalizeTimezone,
   parseDateTimeLocalInTimeZone,
 } from "@/server/date-time";
+import {
+  cancelGoogleCalendarEvent,
+  createGoogleCalendarEvent,
+  resolveGoogleAccessToken,
+  updateGoogleCalendarEvent,
+  type GoogleTokens,
+} from "@/server/google-calendar";
 import { getDb } from "@/server/mongodb";
 import { parseObjectId } from "@/server/ids";
 import type {
@@ -26,6 +33,12 @@ type SessionUserInput = {
   email: string;
   name?: string | null;
   image?: string | null;
+};
+
+type GoogleAccountTokenInput = SessionUserInput & {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
 };
 
 export type ClientInput = {
@@ -119,6 +132,245 @@ function clientNotes(db: Db): Collection<ClientNote> {
 
 function appointments(db: Db): Collection<Appointment> {
   return db.collection<Appointment>("appointments");
+}
+
+async function getUserGoogleTokens(
+  db: Db,
+  userId: string,
+): Promise<GoogleTokens | null> {
+  const userObjectId = parseObjectId(userId);
+
+  if (!userObjectId) {
+    return null;
+  }
+
+  const user = await users(db).findOne({ _id: userObjectId });
+
+  if (!user) {
+    return null;
+  }
+
+  return {
+    accessToken: user.googleAccessToken,
+    refreshToken: user.googleRefreshToken,
+    accessTokenExpiresAt: user.googleAccessTokenExpiresAt,
+  };
+}
+
+async function getUsableGoogleAccessToken(
+  db: Db,
+  userId: string,
+): Promise<string | null> {
+  const tokens = await getUserGoogleTokens(db, userId);
+
+  if (!tokens) {
+    return null;
+  }
+
+  const resolvedTokens = await resolveGoogleAccessToken(tokens);
+  const userObjectId = parseObjectId(userId);
+
+  if (!resolvedTokens || !userObjectId) {
+    return null;
+  }
+
+  await users(db).updateOne(
+    { _id: userObjectId },
+    {
+      $set: {
+        googleAccessToken: resolvedTokens.accessToken,
+        googleRefreshToken:
+          resolvedTokens.refreshToken ?? tokens.refreshToken ?? null,
+        googleAccessTokenExpiresAt: resolvedTokens.accessTokenExpiresAt,
+        updatedAt: new Date(),
+      },
+    },
+  );
+
+  return resolvedTokens.accessToken;
+}
+
+async function markAppointmentSync(
+  db: Db,
+  appointmentId: string,
+  status: Appointment["googleCalendarSyncStatus"],
+  googleCalendarEventId?: string | null,
+): Promise<void> {
+  const appointmentObjectId = parseObjectId(appointmentId);
+
+  if (!appointmentObjectId) {
+    return;
+  }
+
+  await appointments(db).updateOne(
+    { _id: appointmentObjectId },
+    {
+      $set: {
+        googleCalendarSyncStatus: status,
+        ...(googleCalendarEventId !== undefined
+          ? { googleCalendarEventId }
+          : {}),
+        updatedAt: new Date(),
+      },
+    },
+  );
+}
+
+async function syncCreatedAppointmentToGoogleCalendar(
+  db: Db,
+  userId: string,
+  tenant: Tenant,
+  client: Client,
+  appointment: Appointment,
+  appointmentId: string,
+): Promise<void> {
+  const accessToken = await getUsableGoogleAccessToken(db, userId);
+
+  if (!accessToken) {
+    await markAppointmentSync(db, appointmentId, "not_configured");
+    return;
+  }
+
+  try {
+    await markAppointmentSync(db, appointmentId, "pending");
+    const googleCalendarEventId = await createGoogleCalendarEvent(
+      accessToken,
+      appointment,
+      tenant,
+      client,
+    );
+    await markAppointmentSync(
+      db,
+      appointmentId,
+      "synced",
+      googleCalendarEventId,
+    );
+  } catch {
+    await markAppointmentSync(db, appointmentId, "failed");
+  }
+}
+
+async function syncUpdatedAppointmentToGoogleCalendar(
+  db: Db,
+  userId: string,
+  tenant: Tenant,
+  client: Client,
+  appointment: Appointment,
+): Promise<void> {
+  if (!appointment._id) {
+    return;
+  }
+
+  const appointmentId = appointment._id.toHexString();
+  const accessToken = await getUsableGoogleAccessToken(db, userId);
+
+  if (!accessToken) {
+    await markAppointmentSync(db, appointmentId, "not_configured");
+    return;
+  }
+
+  if (!appointment.googleCalendarEventId) {
+    await syncCreatedAppointmentToGoogleCalendar(
+      db,
+      userId,
+      tenant,
+      client,
+      appointment,
+      appointmentId,
+    );
+    return;
+  }
+
+  try {
+    await markAppointmentSync(db, appointmentId, "pending");
+    await updateGoogleCalendarEvent(
+      accessToken,
+      appointment.googleCalendarEventId,
+      appointment,
+      tenant,
+      client,
+    );
+    await markAppointmentSync(
+      db,
+      appointmentId,
+      "synced",
+      appointment.googleCalendarEventId,
+    );
+  } catch {
+    await markAppointmentSync(db, appointmentId, "failed");
+  }
+}
+
+async function syncCancelledAppointmentToGoogleCalendar(
+  db: Db,
+  userId: string,
+  appointment: Appointment,
+): Promise<void> {
+  if (!appointment._id) {
+    return;
+  }
+
+  const appointmentId = appointment._id.toHexString();
+
+  if (!appointment.googleCalendarEventId) {
+    await markAppointmentSync(db, appointmentId, "not_configured");
+    return;
+  }
+
+  const accessToken = await getUsableGoogleAccessToken(db, userId);
+
+  if (!accessToken) {
+    await markAppointmentSync(db, appointmentId, "not_configured");
+    return;
+  }
+
+  try {
+    await markAppointmentSync(db, appointmentId, "pending");
+    await cancelGoogleCalendarEvent(
+      accessToken,
+      appointment.googleCalendarEventId,
+    );
+    await markAppointmentSync(db, appointmentId, "synced", null);
+  } catch {
+    await markAppointmentSync(db, appointmentId, "failed");
+  }
+}
+
+export async function storeGoogleTokensFromAccount(
+  input: GoogleAccountTokenInput,
+): Promise<void> {
+  const db = await getDb();
+  const now = new Date();
+  const existingUser = await users(db).findOne({
+    googleSubjectId: input.googleSubjectId,
+  });
+  const refreshToken =
+    input.refreshToken ?? existingUser?.googleRefreshToken ?? null;
+  const accessToken =
+    input.accessToken ?? existingUser?.googleAccessToken ?? null;
+  const accessTokenExpiresAt = input.expiresAt
+    ? new Date(input.expiresAt * 1000)
+    : (existingUser?.googleAccessTokenExpiresAt ?? null);
+
+  await users(db).updateOne(
+    { googleSubjectId: input.googleSubjectId },
+    {
+      $set: {
+        email: input.email.toLowerCase(),
+        name: input.name ?? null,
+        image: input.image ?? null,
+        googleAccessToken: accessToken,
+        googleRefreshToken: refreshToken,
+        googleAccessTokenExpiresAt: accessTokenExpiresAt,
+        updatedAt: now,
+      },
+      $setOnInsert: {
+        googleSubjectId: input.googleSubjectId,
+        createdAt: now,
+      },
+    },
+    { upsert: true },
+  );
 }
 
 export async function upsertUserFromSession(input: SessionUserInput): Promise<{
@@ -534,7 +786,23 @@ export async function createAppointmentForTenant(
     updatedAt: now,
   });
 
-  return result.insertedId.toHexString();
+  const appointmentId = result.insertedId.toHexString();
+  await syncCreatedAppointmentToGoogleCalendar(
+    db,
+    userId,
+    tenant,
+    client,
+    {
+      ...parsed,
+      _id: result.insertedId,
+      tenantId,
+      createdAt: now,
+      updatedAt: now,
+    },
+    appointmentId,
+  );
+
+  return appointmentId;
 }
 
 export async function updateAppointmentForTenant(
@@ -575,15 +843,25 @@ export async function updateAppointmentForTenant(
     throw new NotFoundError("Appointment not found");
   }
 
+  const parsed = parseAppointmentInput(input, tenant.timezone ?? undefined);
+
   await appointments(db).updateOne(
     { tenantId, _id: appointmentObjectId },
     {
       $set: {
-        ...parseAppointmentInput(input, tenant.timezone ?? undefined),
+        ...parsed,
         updatedAt: new Date(),
       },
     },
   );
+
+  await syncUpdatedAppointmentToGoogleCalendar(db, userId, tenant, client, {
+    ...existingAppointment,
+    ...parsed,
+    _id: appointmentObjectId,
+    tenantId,
+    updatedAt: new Date(),
+  });
 }
 
 export async function cancelAppointmentForTenant(
@@ -600,6 +878,16 @@ export async function cancelAppointmentForTenant(
     throw new NotFoundError("Appointment not found");
   }
 
+  const existingAppointment = await getAppointmentForTenant(
+    db,
+    tenantId,
+    appointmentId,
+  );
+
+  if (!existingAppointment) {
+    throw new NotFoundError("Appointment not found");
+  }
+
   const result = await appointments(db).updateOne(
     { tenantId, _id: appointmentObjectId },
     {
@@ -613,4 +901,10 @@ export async function cancelAppointmentForTenant(
   if (result.matchedCount === 0) {
     throw new NotFoundError("Appointment not found");
   }
+
+  await syncCancelledAppointmentToGoogleCalendar(db, userId, {
+    ...existingAppointment,
+    status: "cancelled",
+    updatedAt: new Date(),
+  });
 }

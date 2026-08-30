@@ -153,7 +153,7 @@ Goal: support treatment summaries, treatment types, reminders, and Google Forms 
 
 Scope:
 
-- Define treatment types per tenant.
+- Define treatment types per tenant, including costs and typical appointment duration.
 - Create treatment records linked to clients and appointments.
 - Record treatment summary.
 - Add reminder date/time.
